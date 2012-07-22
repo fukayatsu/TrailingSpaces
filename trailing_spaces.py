@@ -58,6 +58,24 @@ def clear_trailing_spaces_highlight(window):
     for view in window.views():
         view.erase_regions('TrailingSpacesHighlightListener')
 
+# Delete all trailing spaces
+def delete_trailing_spaces(view, edit):
+    regions = find_trailing_spaces(view)
+    if regions:
+        # deleting a region changes the other regions positions, so we
+        # handle this maintaining an offset
+        offset = 0
+        for region in regions:
+            r = sublime.Region(region.a + offset, region.b + offset)
+            view.erase(edit, sublime.Region(r.a, r.b))
+            offset -= r.size()
+        msg_parts = {"nbRegions": len(regions),
+                     "plural":    's' if len(regions) > 1 else ''}
+        msg = "Deleted %(nbRegions)s trailing spaces region%(plural)s" % msg_parts
+    else:
+        msg = "No trailing spaces to delete!"
+    sublime.status_message(msg)
+
 
 # Toggle the event listner on or off
 class ToggleTrailingSpacesCommand(sublime_plugin.WindowCommand):
@@ -87,23 +105,6 @@ class TrailingSpacesHighlightListener(sublime_plugin.EventListener):
         if trailing_spaces_enabled:
             highlight_trailing_spaces(view)
 
-
-def delete_trailing_spaces(view, edit):
-    regions = find_trailing_spaces(view)
-    if regions:
-        # deleting a region changes the other regions positions, so we
-        # handle this maintaining an offset
-        offset = 0
-        for region in regions:
-            r = sublime.Region(region.a + offset, region.b + offset)
-            view.erase(edit, sublime.Region(r.a, r.b))
-            offset -= r.size()
-        msg_parts = {"nbRegions": len(regions),
-                     "plural":    's' if len(regions) > 1 else ''}
-        msg = "Deleted %(nbRegions)s trailing spaces region%(plural)s" % msg_parts
-    else:
-        msg = "No trailing spaces to delete!"
-    sublime.status_message(msg)
 
 # Allows to erase matching regions.
 class DeleteTrailingSpacesCommand(sublime_plugin.TextCommand):
