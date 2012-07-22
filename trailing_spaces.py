@@ -19,6 +19,8 @@ Config summary (see README.md for details):
 
 import sublime
 import sublime_plugin
+import fnmatch
+import os.path
 
 DEFAULT_MAX_FILE_SIZE = 1048576
 DEFAULT_COLOR_SCOPE_NAME = "invalid"
@@ -58,6 +60,24 @@ def clear_trailing_spaces_highlight(window):
     for view in window.views():
         view.erase_regions('TrailingSpacesHighlightListener')
 
+# Delete all trailing spaces
+def delete_trailing_spaces(view, edit):
+    regions = find_trailing_spaces(view)
+    if regions:
+        # deleting a region changes the other regions positions, so we
+        # handle this maintaining an offset
+        offset = 0
+        for region in regions:
+            r = sublime.Region(region.a + offset, region.b + offset)
+            view.erase(edit, sublime.Region(r.a, r.b))
+            offset -= r.size()
+        msg_parts = {"nbRegions": len(regions),
+                     "plural":    's' if len(regions) > 1 else ''}
+        msg = "Deleted %(nbRegions)s trailing spaces region%(plural)s" % msg_parts
+    else:
+        msg = "No trailing spaces to delete!"
+    sublime.status_message(msg)
+
 
 # Toggle the event listner on or off
 class ToggleTrailingSpacesCommand(sublime_plugin.WindowCommand):
@@ -87,24 +107,21 @@ class TrailingSpacesHighlightListener(sublime_plugin.EventListener):
         if trailing_spaces_enabled:
             highlight_trailing_spaces(view)
 
+    def on_pre_save(self, view):
+        for ignore_pattern in view.settings().get('trailing_spaces_ignore_list',[]):
+            base_name = os.path.basename(view.file_name())
+            if fnmatch.fnmatch(base_name, ignore_pattern):
+                return
+
+        if trailing_spaces_enabled and view.settings().get('trailing_spaces_on_save', False):
+            try:
+                edit = view.begin_edit()
+                delete_trailing_spaces(view, edit)
+            finally:
+                view.end_edit(edit)
+
 
 # Allows to erase matching regions.
 class DeleteTrailingSpacesCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        regions = find_trailing_spaces(self.view)
-        if regions:
-            # deleting a region changes the other regions positions, so we
-            # handle this maintaining an offset
-            offset = 0
-            for region in regions:
-                r = sublime.Region(region.a + offset, region.b + offset)
-                self.view.erase(edit, sublime.Region(r.a, r.b))
-                offset -= r.size()
-
-            msg_parts = {"nbRegions": len(regions),
-                         "plural":    's' if len(regions) > 1 else ''}
-            msg = "Deleted %(nbRegions)s trailing spaces region%(plural)s" % msg_parts
-        else:
-            msg = "No trailing spaces to delete!"
-
-        sublime.status_message(msg)
+        delete_trailing_spaces(self.view, edit)
