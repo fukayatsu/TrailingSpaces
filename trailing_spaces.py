@@ -105,6 +105,14 @@ class TrailingSpacesHighlightListener(sublime_plugin.EventListener):
         if trailing_spaces_enabled:
             highlight_trailing_spaces(view)
 
+    def on_pre_save(self, view):
+        if trailing_spaces_enabled and view.settings().get('trailing_spaces_on_save'):
+            try:
+                edit = view.begin_edit()
+                delete_trailing_spaces(view, edit)
+            finally:
+                view.end_edit(edit)
+
 
 # Allows to erase matching regions.
 class DeleteTrailingSpacesCommand(sublime_plugin.TextCommand):
