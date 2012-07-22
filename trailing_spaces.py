@@ -19,6 +19,8 @@ Config summary (see README.md for details):
 
 import sublime
 import sublime_plugin
+import fnmatch
+import os.path
 
 DEFAULT_MAX_FILE_SIZE = 1048576
 DEFAULT_COLOR_SCOPE_NAME = "invalid"
@@ -106,7 +108,12 @@ class TrailingSpacesHighlightListener(sublime_plugin.EventListener):
             highlight_trailing_spaces(view)
 
     def on_pre_save(self, view):
-        if trailing_spaces_enabled and view.settings().get('trailing_spaces_on_save'):
+        for ignore_pattern in view.settings().get('trailing_spaces_ignore_list',[]):
+            base_name = os.path.basename(view.file_name())
+            if fnmatch.fnmatch(base_name, ignore_pattern):
+                return
+
+        if trailing_spaces_enabled and view.settings().get('trailing_spaces_on_save', False):
             try:
                 edit = view.begin_edit()
                 delete_trailing_spaces(view, edit)
