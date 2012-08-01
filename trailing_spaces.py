@@ -113,7 +113,7 @@ class TrailingSpacesHighlightListener(sublime_plugin.EventListener):
             if fnmatch.fnmatch(base_name, ignore_pattern):
                 return
 
-        if trailing_spaces_enabled and view.settings().get('trailing_spaces_on_save', False):
+        if trailing_spaces_enabled and bool(view.settings().get('trailing_spaces_on_save')):
             try:
                 edit = view.begin_edit()
                 delete_trailing_spaces(view, edit)
